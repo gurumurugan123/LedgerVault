@@ -2,7 +2,7 @@
 
 A fintech-style digital wallet backend built on double-entry ledger accounting (Django + PostgreSQL).
 
-## Phase 0 — Project setup ✅
+## Phase 0 — Project setups ✅
 
 - Python virtual environment (`.venv`)
 - Django 5 + Django REST Framework + SimpleJWT
