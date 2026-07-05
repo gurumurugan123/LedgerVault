@@ -13,6 +13,8 @@ from apps.ledger.exceptions import (
     WalletNotFoundError,
     WebhookSignatureError,
 )
+from apps.ledger.audit_service import log_audit
+from apps.ledger.models import AuditAction
 from apps.ledger.payment_services import (
     execute_idempotent_topup,
     execute_idempotent_withdrawal,
@@ -156,5 +158,17 @@ class PaymentWebhookView(APIView):
             )
         except (PaymentNotFoundError, InvalidPaymentError, WebhookSignatureError) as exc:
             return _map_payment_errors(exc)
+
+        log_audit(
+            actor=None,
+            action=AuditAction.PAYMENT_WEBHOOK,
+            target_type="payment",
+            target_id=response_body["external_id"],
+            metadata={
+                "event_id": serializer.validated_data["event_id"],
+                "status": response_body["status"],
+                "transaction_id": response_body["transaction_id"],
+            },
+        )
 
         return Response(response_body, status=status.HTTP_200_OK)

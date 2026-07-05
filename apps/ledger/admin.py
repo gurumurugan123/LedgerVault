@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.ledger.models import IdempotencyKey, LedgerEntry, Payment, Transaction
+from apps.ledger.models import AuditLog, IdempotencyKey, LedgerEntry, Payment, Transaction
 
 
 class LedgerEntryInline(admin.TabularInline):
@@ -36,3 +36,11 @@ class PaymentAdmin(admin.ModelAdmin):
     list_filter = ("direction", "status")
     search_fields = ("external_id", "wallet__name", "wallet__user__email")
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ("id", "action", "target_type", "target_id", "actor", "created_at")
+    list_filter = ("action", "target_type")
+    search_fields = ("target_id", "actor__email")
+    readonly_fields = ("metadata", "created_at")

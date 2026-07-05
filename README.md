@@ -90,6 +90,7 @@ curl -X POST http://127.0.0.1:8000/transfers/ `
 | `ledger_entries` | DEBIT/CREDIT entries per wallet |
 | `idempotency_keys` | Cached API responses for safe retries |
 | `payments` | Mock provider payment records (top-up / withdraw) |
+| `audit_logs` | Immutable audit trail for sensitive actions |
 
 ## Prerequisites
 
@@ -153,6 +154,64 @@ curl -X POST http://127.0.0.1:8000/topups/ `
 |----------|---------|---------|
 | `PAYMENT_WEBHOOK_SECRET` | `dev-webhook-secret-change-me` | HMAC secret for payment webhooks |
 
-## Next phase
+## Phase 5 — Reversals & Support Tooling ✅
 
-**Phase 5:** (TBD) — reversals, admin tooling, or production payment provider integration.
+- `POST /reversals/` with **Idempotency-Key** (support/admin only)
+- Reverse CONFIRMED **TRANSFER**, **TOPUP**, or **WITHDRAWAL** transactions
+- Creates **REVERSAL** transaction linked via `reference_transaction`
+- Opposite ledger entries restore balances; no double reversal
+- Support lookup APIs for user wallets and pending payments
+
+### Reversal API
+
+| Method | Endpoint | Auth | Body |
+|--------|----------|------|------|
+| POST | `/reversals/` | Support/Admin + `Idempotency-Key` | `transaction_id` |
+
+### Support API
+
+| Method | Endpoint | Auth | Query params |
+|--------|----------|------|--------------|
+| GET | `/support/users/` | Support/Admin | `email` |
+| GET | `/support/wallets/` | Support/Admin | `email` |
+| GET | `/support/payments/` | Support/Admin | `status` (optional) |
+
+### Example reversal
+
+```powershell
+curl -X POST http://127.0.0.1:8000/reversals/ `
+  -H "Authorization: Bearer <support_access_token>" `
+  -H "Idempotency-Key: reversal-key-001" `
+  -H "Content-Type: application/json" `
+  -d '{"transaction_id":1}'
+```
+
+## Phase 6 — Audit Trail, Transaction History & Admin Operations ✅
+
+- `AuditLog` model records reversals, payment webhooks, and role changes
+- `GET /transactions/` and `GET /transactions/:id/` for customer transaction history
+- Admin-only `/administration/` APIs for user management and audit log review
+- Admin can list users and change roles (with audit entry); cannot change own role
+
+### Transaction history API
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/transactions/` | Bearer | List my transactions (via owned wallets) |
+| GET | `/transactions/:id/` | Bearer | Transaction detail with ledger entries |
+
+### Administration API
+
+| Method | Endpoint | Auth | Body / Query |
+|--------|----------|------|--------------|
+| GET | `/administration/users/` | Admin | — |
+| PATCH | `/administration/users/:id/role/` | Admin | `role` |
+| GET | `/administration/audit-logs/` | Admin | `action`, `actor_email` (optional) |
+
+### Audited actions
+
+| Action | Trigger |
+|--------|---------|
+| `REVERSAL_CREATED` | Support/admin creates a reversal |
+| `PAYMENT_WEBHOOK` | Payment provider webhook processed |
+| `USER_ROLE_CHANGED` | Admin changes a user's role |

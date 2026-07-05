@@ -150,3 +150,35 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment({self.external_id}, {self.direction}, {self.status})"
+
+
+class AuditAction(models.TextChoices):
+    REVERSAL_CREATED = "REVERSAL_CREATED", "Reversal created"
+    PAYMENT_WEBHOOK = "PAYMENT_WEBHOOK", "Payment webhook processed"
+    USER_ROLE_CHANGED = "USER_ROLE_CHANGED", "User role changed"
+
+
+class AuditLog(models.Model):
+    actor = models.ForeignKey(
+        "users.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="audit_logs",
+    )
+    action = models.CharField(max_length=40, choices=AuditAction.choices)
+    target_type = models.CharField(max_length=40)
+    target_id = models.CharField(max_length=64)
+    metadata = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "audit_logs"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["action", "created_at"]),
+            models.Index(fields=["target_type", "target_id"]),
+        ]
+
+    def __str__(self):
+        return f"AuditLog({self.action}, {self.target_type}:{self.target_id})"

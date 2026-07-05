@@ -32,3 +32,15 @@ class InvalidPaymentError(PaymentError):
 
 class WebhookSignatureError(PaymentError):
     """Raised when webhook HMAC verification fails."""
+
+
+class ReversalError(Exception):
+    """Base error for reversal operations."""
+
+
+class TransactionNotFoundError(ReversalError):
+    """Raised when a transaction id does not exist."""
+
+
+class InvalidReversalError(ReversalError):
+    """Raised when a transaction cannot be reversed."""
