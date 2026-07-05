@@ -13,4 +13,5 @@ urlpatterns = [
     path("auth/", include("apps.users.urls")),
     path("wallets/", include("apps.wallets.urls")),
     path("transfers/", include("apps.ledger.urls")),
+    path("", include("apps.ledger.payment_urls")),
 ]

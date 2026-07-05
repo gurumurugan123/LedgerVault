@@ -16,3 +16,19 @@ class WalletAccessDeniedError(TransferError):
 
 class InvalidTransferError(TransferError):
     """Raised for invalid transfer parameters."""
+
+
+class PaymentError(Exception):
+    """Base error for payment operations."""
+
+
+class PaymentNotFoundError(PaymentError):
+    """Raised when a payment id does not exist."""
+
+
+class InvalidPaymentError(PaymentError):
+    """Raised for invalid payment parameters or webhook payloads."""
+
+
+class WebhookSignatureError(PaymentError):
+    """Raised when webhook HMAC verification fails."""

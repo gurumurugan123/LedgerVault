@@ -89,6 +89,7 @@ curl -X POST http://127.0.0.1:8000/transfers/ `
 | `transactions` | TRANSFER, TOPUP, WITHDRAWAL, REVERSAL |
 | `ledger_entries` | DEBIT/CREDIT entries per wallet |
 | `idempotency_keys` | Cached API responses for safe retries |
+| `payments` | Mock provider payment records (top-up / withdraw) |
 
 ## Prerequisites
 
@@ -115,6 +116,43 @@ Health check: http://127.0.0.1:8000/health/
 pytest apps/ -v
 ```
 
+## Phase 4 — Top-up / Withdraw ✅
+
+- `POST /topups/` and `POST /withdrawals/` with **Idempotency-Key** header (required)
+- Mock payment provider assigns `external_id` per payment
+- Ledger entries start as **PENDING**; confirmed balance unchanged until webhook
+- `POST /webhooks/payments/` with **HMAC-SHA256** verification (`X-Payment-Signature`)
+- Webhook `completed` → entry **CONFIRMED**; `failed` → pending entry removed
+- Withdrawals reserve funds via PENDING debits (`available_balance` = confirmed − pending debits)
+
+### Top-up / Withdraw API
+
+| Method | Endpoint | Headers | Body |
+|--------|----------|---------|------|
+| POST | `/topups/` | `Authorization`, `Idempotency-Key` | `wallet_id`, `amount` |
+| POST | `/withdrawals/` | `Authorization`, `Idempotency-Key` | `wallet_id`, `amount` |
+| POST | `/webhooks/payments/` | `X-Payment-Signature` | `event_id`, `payment_id`, `status` |
+
+### Example top-up + webhook confirm
+
+```powershell
+# 1) Initiate top-up (returns external_id, status PENDING)
+curl -X POST http://127.0.0.1:8000/topups/ `
+  -H "Authorization: Bearer <access_token>" `
+  -H "Idempotency-Key: topup-key-001" `
+  -H "Content-Type: application/json" `
+  -d '{"wallet_id":1,"amount":"500.00"}'
+
+# 2) Mock provider webhook (HMAC over raw JSON body)
+# status: "completed" or "failed"
+```
+
+### Environment
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PAYMENT_WEBHOOK_SECRET` | `dev-webhook-secret-change-me` | HMAC secret for payment webhooks |
+
 ## Next phase
 
-**Phase 4:** Top-up / Withdraw — mock payment provider, webhooks, HMAC verification, PENDING → CONFIRMED flow.
+**Phase 5:** (TBD) — reversals, admin tooling, or production payment provider integration.

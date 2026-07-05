@@ -110,3 +110,8 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
 }
+
+PAYMENT_WEBHOOK_SECRET = os.getenv(
+    "PAYMENT_WEBHOOK_SECRET",
+    "dev-webhook-secret-change-me",
+)

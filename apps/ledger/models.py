@@ -98,3 +98,55 @@ def calculate_wallet_balance(wallet_id: int) -> Decimal:
         total=Sum("amount"),
     )["total"] or Decimal("0.00")
     return credits - debits
+
+
+def calculate_available_balance(wallet_id: int) -> Decimal:
+    """Confirmed balance minus PENDING debits (reserved for in-flight withdrawals)."""
+    pending_debits = LedgerEntry.objects.filter(
+        wallet_id=wallet_id,
+        status=EntryStatus.PENDING,
+        type=EntryType.DEBIT,
+    ).aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
+    return calculate_wallet_balance(wallet_id) - pending_debits
+
+
+class PaymentDirection(models.TextChoices):
+    TOPUP = "TOPUP", "Top-up"
+    WITHDRAWAL = "WITHDRAWAL", "Withdrawal"
+
+
+class PaymentStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    COMPLETED = "COMPLETED", "Completed"
+    FAILED = "FAILED", "Failed"
+
+
+class Payment(models.Model):
+    external_id = models.CharField(max_length=64, unique=True, db_index=True)
+    wallet = models.ForeignKey(
+        "wallets.Wallet",
+        on_delete=models.CASCADE,
+        related_name="payments",
+    )
+    direction = models.CharField(max_length=20, choices=PaymentDirection.choices)
+    amount = models.DecimalField(max_digits=18, decimal_places=2)
+    status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING,
+    )
+    transaction = models.OneToOneField(
+        Transaction,
+        on_delete=models.CASCADE,
+        related_name="payment",
+    )
+    webhook_event_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "payments"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Payment({self.external_id}, {self.direction}, {self.status})"
